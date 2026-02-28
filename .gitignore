@@ -1,0 +1,21 @@
+# Foundry/Forge outputs
+out/
+cache/
+broadcast/
+
+# Dependencies
+# We usually ignore lib/ because they are managed via git submodules
+lib/
+
+# IDE & OS files
+.vscode/
+.DS_Store
+*.swp
+
+# Environment variables (Crucial for security!)
+.env
+
+# Build artifacts
+artifacts/
+typechain/
+typechain-types/
