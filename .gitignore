@@ -2,6 +2,7 @@
 out/
 cache/
 broadcast/
+lib/
 
 # Dependencies
 # We usually ignore lib/ because they are managed via git submodules

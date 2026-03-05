@@ -34,16 +34,18 @@ import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFCo
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
 /* --------------------------------- ERRORS --------------------------------- */
+error Raffle_UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 raffleState);
 error Raffle_NotEnoughEthSent();
+error Raffle_TransferFailed();
 
 
 contract Raffle is VRFConsumerBaseV2Plus{
 
 /* ---------------------------- TYPE DECLARATIONS --------------------------- */
-enum RaffleState {
-    OPEN,
-    CALCULATING
-}
+    enum RaffleState {
+        OPEN,
+        CALCULATING
+    }
 
 /* ----------------------------- STATE VARIABLES ---------------------------- */
 
@@ -53,6 +55,7 @@ enum RaffleState {
     uint256 private immutable i_interval;
     uint256 private s_lastTimeStamp;
     RaffleState private s_raffleState;
+    address private s_recentWinner;
     
     // Chainlink VRF variables
     uint256 private immutable i_subscriptionId;
@@ -62,7 +65,9 @@ enum RaffleState {
     uint32 private constant NUM_WORDS = 1;
 
 /* --------------------------------- EVENTS --------------------------------- */
-event EnteredRaffle(address indexed player);
+    event EnteredRaffle(address indexed player);
+    event WinnerPicked(address indexed player);
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
 /* -------------------------------------------------------------------------- */
 /*                                  FUNCTIONS                                 */
@@ -71,7 +76,7 @@ event EnteredRaffle(address indexed player);
 /* ------------------------------ CONSTRUCTORS ------------------------------ */
     constructor(
         uint256 subscriptionId,
-        bytes32 gasLane, // keyHash
+        bytes32 gasLane, 
         uint256 interval,
         uint256 entranceFee,
         uint32 callbackGasLimit,
@@ -81,9 +86,10 @@ event EnteredRaffle(address indexed player);
         i_interval = interval;
         i_subscriptionId = subscriptionId;
         i_entranceFee = entranceFee;
-        s_raffleState = RaffleState.OPEN;
-        s_lastTimeStamp = block.timestamp;
         i_callbackGasLimit = callbackGasLimit;
+
+        s_raffleState = RaffleState.OPEN;
+        s_lastTimeStamp = block.timestamp; 
     }
 
 /* -------------------------------- EXTERNAL -------------------------------- */
@@ -95,11 +101,26 @@ event EnteredRaffle(address indexed player);
         emit EnteredRaffle(msg.sender);
     }
 
-    function pickWinner() external {
-        if (block.timestamp - s_lastTimeStamp < i_interval) {
-            revert();
+    function checkUpkeep(bytes memory /* checkData */ )  public view returns (bool upkeepNeeded, bytes memory /* performData */ )
+    {
+        bool isOpen = RaffleState.OPEN == s_raffleState;
+        bool timePassed = ((block.timestamp - s_lastTimeStamp) > i_interval);
+        bool hasPlayers = s_players.length > 0;
+        bool hasBalance = address(this).balance > 0;
+        upkeepNeeded = (timePassed && isOpen && hasBalance && hasPlayers);
+        return (upkeepNeeded, "0x0"); // 
+    }
+
+    function performUpkeep(bytes calldata /* performData */ ) external {
+        (bool upkeepNeeded,) = checkUpkeep("");
+        // require(upkeepNeeded, "Upkeep not needed");
+        if (!upkeepNeeded) {
+            revert Raffle_UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
 
+        s_raffleState = RaffleState.CALCULATING;
+
+        // Will revert if subscription is not set and funded.
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: i_gasLane,
@@ -108,15 +129,36 @@ event EnteredRaffle(address indexed player);
                 callbackGasLimit: i_callbackGasLimit,
                 numWords: NUM_WORDS,
                 extraArgs: VRFV2PlusClient._argsToBytes(
-                    // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
                     VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
                 )
             })
         );
-
+        emit RequestedRaffleWinner(requestId);
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override{}
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override{
+
+        //checks
+
+        //effects
+        uint256 indexOfWinner = randomWords[0] % s_players.length;
+        address payable recentWinner = s_players[indexOfWinner];
+        s_recentWinner = recentWinner;
+        s_players = new address payable[](0);
+        s_raffleState = RaffleState.OPEN;
+        s_players = new address payable[](0);
+        s_lastTimeStamp = block.timestamp;
+        emit WinnerPicked(recentWinner); 
+
+
+        //interactions
+
+        (bool success,) = recentWinner.call{value: address(this).balance}("");
+        if (!success) {
+            revert Raffle_TransferFailed();
+        }
+
+    }
 
 
 /* ------------------------------ VIEW AND PURE ----------------------------- */
