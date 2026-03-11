@@ -7,3 +7,9 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "NftCollection/lib/openzeppelin-contracts"]
+	path = NftCollection/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "NftCollection/lib/foundry-devops"]
+	path = NftCollection/lib/foundry-devops
+	url = https://github.com/Cyfrin/foundry-devops

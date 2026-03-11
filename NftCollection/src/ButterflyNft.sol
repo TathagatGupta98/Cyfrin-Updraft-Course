@@ -7,6 +7,8 @@ import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 
 contract ButterflyNft  is ERC721{
 
+    error FormNFT__CantFlipFormIfNotOwner();
+
     uint256 private s_tokenCounter;
     string private s_caterpillarSvgImageUri;
     string private s_butterflySvgImageUri;
@@ -18,10 +20,7 @@ contract ButterflyNft  is ERC721{
 
     mapping(uint256 => Form) private s_tokenIdToForm;
 
-    constructor(
-        string memory caterpillarSvgImageUri,
-        string memory butterflySvgImageUri
-    ) ERC721("Butterfly NFT" , "BN"){
+    constructor(string memory caterpillarSvgImageUri, string memory butterflySvgImageUri) ERC721("Butterfly NFT" , "BN"){
 
         s_tokenCounter = 0;
         s_caterpillarSvgImageUri = caterpillarSvgImageUri;
@@ -64,5 +63,17 @@ contract ButterflyNft  is ERC721{
                 )
             )
         );
+    }
+
+    function flipForm(uint256 tokenId) public view {
+        if(getApproved(tokenId) != msg.sender && ownerOf(tokenId) != msg.sender){
+            revert FormNFT__CantFlipFormIfNotOwner();
+        }
+    
+        if(s_tokenIdToForm[tokenId] == Form.Caterpillar){
+            s_tokenIdToForm[tokenId] == Form.Butterfly;
+        } else{
+            s_tokenIdToForm[tokenId] == Form.Caterpillar;
+        }
     }
 }
