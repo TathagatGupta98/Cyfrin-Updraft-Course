@@ -27,6 +27,4 @@ contract ManualToken {
 
         require(balanceOf(msg.sender) + balanceOf(_to) == previousBalances);
     }
-
-
 }
