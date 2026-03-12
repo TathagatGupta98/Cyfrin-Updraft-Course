@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import {Test,console} from "forge-std/Test.sol";
 import {ButterflyNft} from "../src/ButterflyNft.sol";
-
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 
 
 contract ButterflyNftTest is Test {
@@ -15,12 +15,44 @@ contract ButterflyNftTest is Test {
     address USER = makeAddr("USER");
 
     function setUp() public {
-        butterflyNft = new ButterflyNft(ButterflyNft_svg_uri, CaterpillarNft_svg_uri);
+        butterflyNft = new ButterflyNft(CaterpillarNft_svg_uri, ButterflyNft_svg_uri);
     }
 
     function testViewTokenURI() public {
         vm.prank(USER);
         butterflyNft.mintNft();
         console.log(butterflyNft.tokenURI(0));
+    }
+
+    function buildExpectedTokenURI(string memory imageURI) internal view returns (string memory) {
+        return string(
+            abi.encodePacked(
+                "data:application/json;base64,",
+                Base64.encode(bytes(abi.encodePacked(
+                    '{"name" : "', butterflyNft.name(),
+                    '", "description" : "An NFT that can transform from a caterpillar to an adult butterfly.",',
+                    ' "attributes" : [{"trait_type":"moodiness", "value": 100}],',
+                    ' "image" : "', imageURI, '"}'
+                )))
+            )
+        );
+    }
+
+    function testFlipFormIntegration() public {
+        vm.prank(USER);
+        butterflyNft.mintNft();  
+
+        assertEq(
+            butterflyNft.tokenURI(0),
+            buildExpectedTokenURI(CaterpillarNft_svg_uri)
+        );
+
+        vm.prank(USER);
+        butterflyNft.flipForm(0);  
+
+        assertEq(
+            butterflyNft.tokenURI(0),
+            buildExpectedTokenURI(ButterflyNft_svg_uri)
+        );
     }
 }

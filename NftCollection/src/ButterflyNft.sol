@@ -65,15 +65,14 @@ contract ButterflyNft  is ERC721{
         );
     }
 
-    function flipForm(uint256 tokenId) public view {
+    function flipForm(uint256 tokenId) public {
         if(getApproved(tokenId) != msg.sender && ownerOf(tokenId) != msg.sender){
             revert FormNFT__CantFlipFormIfNotOwner();
         }
-    
         if(s_tokenIdToForm[tokenId] == Form.Caterpillar){
-            s_tokenIdToForm[tokenId] == Form.Butterfly;
+            s_tokenIdToForm[tokenId] = Form.Butterfly;
         } else{
-            s_tokenIdToForm[tokenId] == Form.Caterpillar;
+            s_tokenIdToForm[tokenId] = Form.Caterpillar;
         }
     }
 }
