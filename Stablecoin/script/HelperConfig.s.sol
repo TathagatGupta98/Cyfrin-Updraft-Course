@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import { Script } from "forge-std/Script.sol";
 import { MockV3Aggregator } from "../test/mocks/MockV3Aggregator.sol";
-import { ERC20Mock } from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import { ERC20Mock } from "../test/mocks/ERC20Mock.sol";
 
 contract HelperConfig is Script {
 
@@ -27,7 +27,7 @@ contract HelperConfig is Script {
         if(block.chainid == 11155111){
             activeNetworkConfig = getSepoliaEthConfig();
         } else{
-            activeNetworkConfig = getOfCreateAnvilEthConfig();
+            activeNetworkConfig = getOrCreateAnvilEthConfig();
         }
     }
 

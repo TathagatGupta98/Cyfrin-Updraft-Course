@@ -54,7 +54,7 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
 
 /* ------------------------------ constructor ------------------------------ */
 
-    constructor(address initialOwner) ERC20("DecentralizedStableCoin", "DSC") Ownable(initialOwner) {}
+    constructor() ERC20("DecentralizedStableCoin", "DSC") Ownable(msg.sender) {}
 
 /* --------------------------- external functions --------------------------- */
     function mint(address _to, uint256 _amount) external onlyOwner returns(bool){

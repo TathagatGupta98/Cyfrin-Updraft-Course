@@ -67,6 +67,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__MintFailed();
 
 
+
 /* ----------------------------- state variables ---------------------------- */
 
     mapping(address token => address priceFeed) private s_priceFeeds;
@@ -83,6 +84,7 @@ contract DSCEngine is ReentrancyGuard {
 
 /* --------------------------------- events --------------------------------- */
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
+    event CollateralRedeemed(address indexed user, address indexed token, uint256 indexed amount);
 
 /* -------------------------------- modifiers ------------------------------- */
     modifier moreThanZero(uint256 amount){
@@ -115,13 +117,21 @@ contract DSCEngine is ReentrancyGuard {
 
 
 
-    function depositCollateralAndMintDsc() external {}
-
+/*
+ * @param tokenCollateralAddress: the address of the token to deposit as collateral
+ * @param amountCollateral: The amount of collateral to deposit
+ * @param amountDscToMint: The amount of DecentralizedStableCoin to mint
+ * @notice: This function will deposit your collateral and mint DSC in one transaction
+ */
+    function depositCollateralAndMintDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToMint) external {
+        depositCollateral(tokenCollateralAddress, amountCollateral);
+        mintDsc(amountDscToMint);
+    }
 /*
 * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
 * @param amountCollateral: The amount of collateral you're depositing
 */
-    function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant{
+    function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant{
         s_collateralDeposited[msg.sender][tokenCollateralAddress] += amountCollateral;
         emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollateral);
 
@@ -131,7 +141,6 @@ contract DSCEngine is ReentrancyGuard {
             revert DSCEngine__TransferFailed();
         }
     }
-
     
 /*
  * @param amountDscToMint: The amount of DSC you want to mint
@@ -147,11 +156,39 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function redeemCollateralForDsc() external {}
+/*
+* @param tokenCollateralAddress: the collateral address to redeem
+* @param amountCollateral: amount of collateral to redeem
+* @param amountDscToBurn: amount of DSC to burn
+* This function burns DSC and redeems underlying collateral in one transaction
+*/
+    function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToBurn) external {
+        burnDsc(amountDscToBurn);
+        redeemCollateral(tokenCollateralAddress, amountCollateral);
+    }
 
-    function redeemCollateral() external {}
+    function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{
+        s_collateralDeposited[msg.sender][tokenCollateralAddress] -= amountCollateral;
+        emit CollateralRedeemed(msg.sender, tokenCollateralAddress, amountCollateral);
 
-    function burnDsc() external {}
+        bool success = IERC20(tokenCollateralAddress).transfer(msg.sender, amountCollateral);
+        if(!success){
+            revert DSCEngine__TransferFailed();
+        }
+    
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
+
+
+    function burnDsc(uint256 amount) public moreThanZero(amount){
+        s_DSCMinted[msg.sender] -= amount;
+        bool success = i_dsc.transferFrom(msg.sender, address(this), amount);
+        if(!success){
+            revert DSCEngine__TransferFailed();
+        }
+        i_dsc.burn(amount);
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
 
     function liquidate() external {}
 
