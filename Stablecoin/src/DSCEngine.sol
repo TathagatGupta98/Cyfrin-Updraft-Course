@@ -268,7 +268,7 @@ anyone.
         return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
     
-    function _getAccountInformation(address user) private view returns(uint256 totalDscMinted,uint256 collateralValueInUsd){
+    function _getAccountInformation(address user) public view returns(uint256 totalDscMinted,uint256 collateralValueInUsd){
         totalDscMinted = s_DSCMinted[user];
         collateralValueInUsd = getAccountCollateralValue(user);
     }
@@ -286,6 +286,10 @@ anyone.
         (,int256 price,,,) = priceFeed.latestRoundData();
     
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
+    }
+
+    function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
+        return s_collateralDeposited[user][token];
     }
 
     function getPrecision() external pure returns (uint256) {
